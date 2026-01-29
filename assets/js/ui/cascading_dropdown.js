@@ -20,7 +20,7 @@ function generateDropdowns() {
         // Collect the program options into an array
         let programs = [];
         for (var program in semesters[this.value]) {
-            programs.push(program);
+            programs.push(program.replace(" Lisans", ""));
         }
 
         // Sort the programs alphabetically
