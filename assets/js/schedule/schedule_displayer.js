@@ -188,7 +188,38 @@ class ScheduleDisplayer {
         
         const crn = document.createElement('div');
         ScheduleStyle.applyInfoTextStyles(crn);
-        crn.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i>${schedule.lesson.crn || 'N/A'}`;
+        
+        if (schedule.lesson.crnList && schedule.lesson.crnList.length > 1) {
+            // Create a select dropdown for multiple CRNs
+            const crnSelect = document.createElement('select');
+            crnSelect.className = 'crn-selector';
+            crnSelect.style.width = '100%';
+            crnSelect.style.border = 'none';
+            crnSelect.style.background = 'transparent';
+            crnSelect.style.color = 'inherit';
+            crnSelect.style.fontSize = 'inherit';
+            
+            schedule.lesson.crnList.forEach(crnValue => {
+                const option = document.createElement('option');
+                option.value = crnValue;
+                option.textContent = crnValue;
+                if (crnValue === schedule.lesson.crn) {
+                    option.selected = true;
+                }
+                crnSelect.appendChild(option);
+            });
+            
+            crnSelect.addEventListener('change', (e) => {
+                schedule.lesson.crn = e.target.value;
+                // Update the display
+                this._updateScheduleDisplay();
+            });
+            
+            crn.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i>`;
+            crn.appendChild(crnSelect);
+        } else {
+            crn.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i>${schedule.lesson.crn || 'N/A'}`;
+        }
         
         const instructor = document.createElement('div');
         ScheduleStyle.applyInfoTextStyles(instructor);
