@@ -1,6 +1,10 @@
 class ScheduleDisplayer {
     constructor(courseSchedule) {
         this.courseSchedule = courseSchedule;
+        // Counter for assigning stable IDs to displayed lessons (used to sync UI)
+        if (typeof ScheduleDisplayer._lessonIdCounter === 'undefined') {
+            ScheduleDisplayer._lessonIdCounter = 0;
+        }
         this.dayMap = {
             // Turkish day names
             'Pzt': 'monday',
@@ -152,6 +156,14 @@ class ScheduleDisplayer {
         // Create pin icon
         const pinIcon = document.createElement('i');
         const lessonCRN = schedule.lesson.crn;
+        // Ensure a stable display id on the lesson object so multiple DOM parts
+        // for the same lesson can be kept in sync
+        const lessonObj = schedule.lesson;
+        if (!lessonObj._displayId) {
+            ScheduleDisplayer._lessonIdCounter++;
+            lessonObj._displayId = `lesson-${ScheduleDisplayer._lessonIdCounter}`;
+        }
+        lessonDiv.setAttribute('data-lesson-id', lessonObj._displayId);
         const isPinned = window.pinnedLessons && window.pinnedLessons.has(lessonCRN);
         pinIcon.className = isPinned ? 'fa-solid fa-thumbtack lesson-pin-icon pinned' : 'fa-solid fa-thumbtack lesson-pin-icon';
         pinIcon.setAttribute('data-crn', lessonCRN);
@@ -188,16 +200,27 @@ class ScheduleDisplayer {
         
         const crn = document.createElement('div');
         ScheduleStyle.applyInfoTextStyles(crn);
+        // Keep CRN area inline and centered so dropdowns don't push other content
+        crn.style.display = 'flex';
+        crn.style.alignItems = 'center';
+        crn.style.gap = '6px';
         
         if (schedule.lesson.crnList && schedule.lesson.crnList.length > 1) {
             // Create a select dropdown for multiple CRNs
             const crnSelect = document.createElement('select');
             crnSelect.className = 'crn-selector';
-            crnSelect.style.width = '100%';
+            crnSelect.setAttribute('data-lesson-id', lessonObj._displayId);
+            // Make the select compact and positioned so it doesn't change layout
+            crnSelect.style.width = 'auto';
+            crnSelect.style.minWidth = '56px';
             crnSelect.style.border = 'none';
             crnSelect.style.background = 'transparent';
             crnSelect.style.color = 'inherit';
             crnSelect.style.fontSize = 'inherit';
+            crnSelect.style.marginLeft = '6px';
+            crnSelect.style.zIndex = '50';
+            crnSelect.style.position = 'relative';
+            crnSelect.style.appearance = 'menulist';
             
             schedule.lesson.crnList.forEach(crnValue => {
                 const option = document.createElement('option');
@@ -210,15 +233,42 @@ class ScheduleDisplayer {
             });
             
             crnSelect.addEventListener('change', (e) => {
-                schedule.lesson.crn = e.target.value;
-                // Update the display
-                this._updateScheduleDisplay();
+                const newCrn = e.target.value;
+                // Update the canonical lesson object and any grouped lessons
+                schedule.lesson.crn = newCrn;
+                if (Array.isArray(schedule.lesson._groupedLessons)) {
+                    schedule.lesson._groupedLessons.forEach(l => { l.crn = newCrn; });
+                }
+
+                // Sync all selects for this lesson across the grid
+                const selector = `select.crn-selector[data-lesson-id="${lessonObj._displayId}"]`;
+                const otherSelects = document.querySelectorAll(selector);
+                otherSelects.forEach(s => {
+                    if (s === e.target) return;
+                    if (s.value !== newCrn) s.value = newCrn;
+                });
+
+                // Also update any plain CRN displays for the same lesson
+                const plainSelector = `.schedule-lesson[data-lesson-id="${lessonObj._displayId}"]`;
+                const lessonNodes = document.querySelectorAll(plainSelector);
+                lessonNodes.forEach(node => {
+                    const spans = node.querySelectorAll('.crn-text');
+                    spans.forEach(sp => { sp.textContent = newCrn; });
+                });
+
+                // Update the display (repaint if necessary)
+                if (typeof this._updateScheduleDisplay === 'function') this._updateScheduleDisplay();
             });
             
+            // Allow dropdown to overflow short lesson cards
+            // (ScheduleStyle.applyLessonCardStyles sets overflow hidden by default)
+            // Set lessonDiv to allow visible overflow so the native select popup is visible
+            lessonDiv.style.overflow = 'visible';
+
             crn.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i>`;
             crn.appendChild(crnSelect);
         } else {
-            crn.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i>${schedule.lesson.crn || 'N/A'}`;
+            crn.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i><span class="crn-text">${schedule.lesson.crn || 'N/A'}</span>`;
         }
         
         const instructor = document.createElement('div');

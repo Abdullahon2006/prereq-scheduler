@@ -209,9 +209,16 @@ class CourseSchedule {
             validLessons = groupLessonsByDayTime(validLessons);
         }
 
-        // Filter by instructor if specified
+        // Filter by instructor if specified. If lessons were grouped (rep objects
+        // with `_groupedLessons`), accept a representative if any grouped
+        // lesson matches the instructor.
         if (selectedInstructor) {
-            validLessons = validLessons.filter(lesson => lesson.instructor === selectedInstructor);
+            validLessons = validLessons.filter(lesson => {
+                if (lesson && Array.isArray(lesson._groupedLessons)) {
+                    return lesson._groupedLessons.some(l => l.instructor === selectedInstructor);
+                }
+                return lesson && lesson.instructor === selectedInstructor;
+            });
         }
         
         // If no valid lessons, skip this course
