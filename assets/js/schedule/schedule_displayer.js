@@ -164,16 +164,18 @@ class ScheduleDisplayer {
             lessonObj._displayId = `lesson-${ScheduleDisplayer._lessonIdCounter}`;
         }
         lessonDiv.setAttribute('data-lesson-id', lessonObj._displayId);
-        const isPinned = window.pinnedLessons && window.pinnedLessons.has(lessonCRN);
+        // Use display CRN for UI actions; don't mutate canonical lesson.crn here.
+        const displayCrn = lessonObj._displayCrn || lessonObj.crn;
+        const isPinned = window.pinnedLessons && window.pinnedLessons.has(displayCrn);
         pinIcon.className = isPinned ? 'fa-solid fa-thumbtack lesson-pin-icon pinned' : 'fa-solid fa-thumbtack lesson-pin-icon';
-        pinIcon.setAttribute('data-crn', lessonCRN);
+        pinIcon.setAttribute('data-crn', displayCrn);
         
         // Apply pin icon styles using ScheduleStyle
         ScheduleStyle.applyPinIconStyles(pinIcon, isPinned);
         
         pinIcon.addEventListener('click', (e) => {
             e.stopPropagation();
-            window.togglePinLesson(lessonCRN);
+            window.togglePinLesson(displayCrn);
         });
         
         // Create content
@@ -200,10 +202,9 @@ class ScheduleDisplayer {
         
         const crn = document.createElement('div');
         ScheduleStyle.applyInfoTextStyles(crn);
-        // Keep CRN area inline and centered so dropdowns don't push other content
-        crn.style.display = 'flex';
-        crn.style.alignItems = 'center';
-        crn.style.gap = '6px';
+        // Prepare CRN container; position relative so we can absolutely position the select
+        crn.style.position = 'relative';
+        crn.style.minHeight = '18px';
         
         if (schedule.lesson.crnList && schedule.lesson.crnList.length > 1) {
             // Create a select dropdown for multiple CRNs
@@ -217,16 +218,19 @@ class ScheduleDisplayer {
             crnSelect.style.background = 'transparent';
             crnSelect.style.color = 'inherit';
             crnSelect.style.fontSize = 'inherit';
-            crnSelect.style.marginLeft = '6px';
-            crnSelect.style.zIndex = '50';
-            crnSelect.style.position = 'relative';
+            // Position absolutely so it doesn't consume layout space and shift other texts
+            crnSelect.style.position = 'absolute';
+            crnSelect.style.right = '6px';
+            crnSelect.style.top = '6px';
+            crnSelect.style.zIndex = '200';
             crnSelect.style.appearance = 'menulist';
             
+            const initialDisplayCrn = lessonObj._displayCrn || lessonObj.crn;
             schedule.lesson.crnList.forEach(crnValue => {
                 const option = document.createElement('option');
                 option.value = crnValue;
                 option.textContent = crnValue;
-                if (crnValue === schedule.lesson.crn) {
+                if (crnValue === initialDisplayCrn) {
                     option.selected = true;
                 }
                 crnSelect.appendChild(option);
@@ -234,10 +238,10 @@ class ScheduleDisplayer {
             
             crnSelect.addEventListener('change', (e) => {
                 const newCrn = e.target.value;
-                // Update the canonical lesson object and any grouped lessons
-                schedule.lesson.crn = newCrn;
-                if (Array.isArray(schedule.lesson._groupedLessons)) {
-                    schedule.lesson._groupedLessons.forEach(l => { l.crn = newCrn; });
+                // Update display CRN on the lesson object and any grouped lessons
+                lessonObj._displayCrn = newCrn;
+                if (Array.isArray(lessonObj._groupedLessons)) {
+                    lessonObj._groupedLessons.forEach(l => { l._displayCrn = newCrn; });
                 }
 
                 // Sync all selects for this lesson across the grid
@@ -256,6 +260,18 @@ class ScheduleDisplayer {
                     spans.forEach(sp => { sp.textContent = newCrn; });
                 });
 
+                // Update pin icon state for all lesson elements for this lesson
+                const pinSelector = `.schedule-lesson[data-lesson-id="${lessonObj._displayId}"] .lesson-pin-icon`;
+                const pins = document.querySelectorAll(pinSelector);
+                pins.forEach(p => {
+                    p.setAttribute('data-crn', newCrn);
+                    if (window.pinnedLessons && window.pinnedLessons.has(newCrn)) {
+                        p.classList.add('pinned');
+                    } else {
+                        p.classList.remove('pinned');
+                    }
+                });
+
                 // Update the display (repaint if necessary)
                 if (typeof this._updateScheduleDisplay === 'function') this._updateScheduleDisplay();
             });
@@ -268,7 +284,8 @@ class ScheduleDisplayer {
             crn.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i>`;
             crn.appendChild(crnSelect);
         } else {
-            crn.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i><span class="crn-text">${schedule.lesson.crn || 'N/A'}</span>`;
+            const displayCrnPlain = lessonObj._displayCrn || lessonObj.crn || 'N/A';
+            crn.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i><span class="crn-text">${displayCrnPlain}</span>`;
         }
         
         const instructor = document.createElement('div');
@@ -366,7 +383,7 @@ class ScheduleDisplayer {
         const tooltipText = [
             `${courseCodeTitle}: ${courseNameTitle}`,
             `${schedule.startTime} - ${schedule.endTime}`,
-            `CRN: ${schedule.lesson.crn || 'N/A'}`,
+            `CRN: ${lessonObj._displayCrn || lessonObj.crn || 'N/A'}`,
             `Öğretim Görevlisi: ${instructorName}`,
             ...buildingInfo
         ].filter(Boolean).join('\n');

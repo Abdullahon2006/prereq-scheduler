@@ -200,7 +200,15 @@ class CourseSchedule {
 
         // If the user has pinned CRNs for this course, prefer the pinned lesson(s)
         // pinnedCRNs refers to lesson.crn values
-        const pinnedLessonInCourse = validLessons.find(lesson => pinnedCRNs.has(lesson.crn));
+        const pinnedLessonInCourse = validLessons.find(lesson => {
+            if (!lesson) return false;
+            // If grouped representative, check its crnList
+            if (Array.isArray(lesson.crnList) && lesson.crnList.length > 0) {
+                return lesson.crnList.some(c => pinnedCRNs.has(c));
+            }
+            // Otherwise check the lesson.crn directly
+            return pinnedCRNs.has(lesson.crn);
+        });
         if (pinnedLessonInCourse) {
             // Respect pinned: only consider the pinned lesson (original behavior)
             validLessons = [pinnedLessonInCourse];
