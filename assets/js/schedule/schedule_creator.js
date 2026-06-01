@@ -250,7 +250,10 @@ class ScheduleCreator {
      * Handle course removal
      * @private
      */
-    async _handleRemoveCourse(rowId) {
+    async _handleRemoveCourse(rowId, courseData = null) {
+        if (courseData && courseData.course) {
+            this.scheduleStateManager.removePinsForCourse(courseData.course);
+        }
         await this._regenerateSchedules();
         this._displayCurrentSchedule();
         this._updateURL();

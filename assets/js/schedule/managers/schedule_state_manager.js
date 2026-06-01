@@ -318,6 +318,24 @@ class ScheduleStateManager {
     }
 
     /**
+     * Remove pinned lessons that belong to a specific course
+     *
+     * @param {Object} course - Course object with lessons
+     */
+    removePinsForCourse(course) {
+        if (!course || !Array.isArray(course.lessons)) {
+            return;
+        }
+
+        course.lessons.forEach(lesson => {
+            if (lesson && lesson.crn) {
+                this.pinnedLessons.delete(lesson.crn);
+            }
+        });
+        window.pinnedLessons = this.pinnedLessons;
+    }
+
+    /**
      * Get pinned lesson objects from selected courses
      * 
      * @param {Array} selectedCourses - Array of selected course objects

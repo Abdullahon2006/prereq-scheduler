@@ -155,7 +155,6 @@ class ScheduleDisplayer {
         
         // Create pin icon
         const pinIcon = document.createElement('i');
-        const lessonCRN = schedule.lesson.crn;
         // Ensure a stable display id on the lesson object so multiple DOM parts
         // for the same lesson can be kept in sync
         const lessonObj = schedule.lesson;
@@ -164,18 +163,72 @@ class ScheduleDisplayer {
             lessonObj._displayId = `lesson-${ScheduleDisplayer._lessonIdCounter}`;
         }
         lessonDiv.setAttribute('data-lesson-id', lessonObj._displayId);
+        const getPinnedCrnForLesson = () => {
+            if (!window.pinnedLessons) return null;
+            if (Array.isArray(lessonObj.crnList) && lessonObj.crnList.length > 0) {
+                return lessonObj.crnList.find(c => window.pinnedLessons.has(c)) || null;
+            }
+            return lessonObj.crn && window.pinnedLessons.has(lessonObj.crn) ? lessonObj.crn : null;
+        };
+        const getDefaultCrn = () => {
+            if (Array.isArray(lessonObj.crnList) && lessonObj.crnList.length > 0) {
+                return lessonObj.crnList[0];
+            }
+            return lessonObj.crn || null;
+        };
+        const updateLessonDisplay = (newDisplayCrn, pinned) => {
+            const hasMultipleCrns = Array.isArray(lessonObj.crnList) && lessonObj.crnList.length > 1;
+            const textValue = newDisplayCrn || (hasMultipleCrns ? 'CRN not chosen' : (lessonObj.crn || 'N/A'));
+
+            const textSelector = `.schedule-lesson[data-lesson-id="${lessonObj._displayId}"] .crn-text`;
+            document.querySelectorAll(textSelector).forEach(sp => { sp.textContent = textValue; });
+
+            const selectSelector = `select.crn-selector[data-lesson-id="${lessonObj._displayId}"]`;
+            document.querySelectorAll(selectSelector).forEach(s => {
+                s.value = newDisplayCrn || '';
+            });
+
+            const pinSelector = `.schedule-lesson[data-lesson-id="${lessonObj._displayId}"] .lesson-pin-icon`;
+            document.querySelectorAll(pinSelector).forEach(p => {
+                p.setAttribute('data-crn', newDisplayCrn || '');
+                if (pinned) {
+                    p.classList.add('pinned');
+                } else {
+                    p.classList.remove('pinned');
+                }
+            });
+        };
+
         // Use display CRN for UI actions; don't mutate canonical lesson.crn here.
-        const displayCrn = lessonObj._displayCrn || lessonObj.crn;
-        const isPinned = window.pinnedLessons && window.pinnedLessons.has(displayCrn);
+        const pinnedCrn = getPinnedCrnForLesson();
+        const displayCrn = lessonObj._displayCrn || pinnedCrn || null;
+        if (pinnedCrn && !lessonObj._displayCrn) {
+            lessonObj._displayCrn = pinnedCrn;
+        }
+        const isPinned = Boolean(pinnedCrn);
         pinIcon.className = isPinned ? 'fa-solid fa-thumbtack lesson-pin-icon pinned' : 'fa-solid fa-thumbtack lesson-pin-icon';
-        pinIcon.setAttribute('data-crn', displayCrn);
+        pinIcon.setAttribute('data-crn', displayCrn || '');
         
         // Apply pin icon styles using ScheduleStyle
         ScheduleStyle.applyPinIconStyles(pinIcon, isPinned);
         
         pinIcon.addEventListener('click', (e) => {
             e.stopPropagation();
-            window.togglePinLesson(displayCrn);
+            const currentPinnedCrn = getPinnedCrnForLesson();
+            if (currentPinnedCrn) {
+                window.togglePinLesson(currentPinnedCrn);
+                lessonObj._displayCrn = null;
+                updateLessonDisplay(null, false);
+                return;
+            }
+
+            const defaultCrn = lessonObj._displayCrn || getDefaultCrn();
+            if (!defaultCrn) return;
+            lessonObj._displayCrn = defaultCrn;
+            if (!window.pinnedLessons || !window.pinnedLessons.has(defaultCrn)) {
+                window.togglePinLesson(defaultCrn);
+            }
+            updateLessonDisplay(defaultCrn, true);
         });
         
         // Create content
@@ -202,78 +255,79 @@ class ScheduleDisplayer {
         
         const crn = document.createElement('div');
         ScheduleStyle.applyInfoTextStyles(crn);
-        // Prepare CRN container; position relative so we can absolutely position the select
-        crn.style.position = 'relative';
+        // Keep CRN label and dropdown on the same row
+        crn.style.display = 'flex';
+        crn.style.alignItems = 'center';
+        crn.style.justifyContent = 'space-between';
+        crn.style.gap = '6px';
         crn.style.minHeight = '18px';
+
+        const crnLabel = document.createElement('span');
+        crnLabel.style.display = 'inline-flex';
+        crnLabel.style.alignItems = 'center';
+        crnLabel.style.gap = '6px';
         
-        if (schedule.lesson.crnList && schedule.lesson.crnList.length > 1) {
+        const hasMultipleCrns = Array.isArray(schedule.lesson.crnList) && schedule.lesson.crnList.length > 1;
+        const crnTextValue = displayCrn || (hasMultipleCrns ? 'CRN not chosen' : (lessonObj.crn || 'N/A'));
+
+        if (hasMultipleCrns) {
             // Create a select dropdown for multiple CRNs
             const crnSelect = document.createElement('select');
             crnSelect.className = 'crn-selector';
             crnSelect.setAttribute('data-lesson-id', lessonObj._displayId);
             // Make the select compact and positioned so it doesn't change layout
             crnSelect.style.width = 'auto';
-            crnSelect.style.minWidth = '56px';
+            crnSelect.style.minWidth = '120px';
             crnSelect.style.border = 'none';
             crnSelect.style.background = 'transparent';
             crnSelect.style.color = 'inherit';
             crnSelect.style.fontSize = 'inherit';
-            // Position absolutely so it doesn't consume layout space and shift other texts
-            crnSelect.style.position = 'absolute';
-            crnSelect.style.right = '6px';
-            crnSelect.style.top = '6px';
-            crnSelect.style.zIndex = '200';
+            crnSelect.style.pointerEvents = 'auto';
             crnSelect.style.appearance = 'menulist';
+
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = 'CRN not chosen';
+            crnSelect.appendChild(emptyOption);
             
-            const initialDisplayCrn = lessonObj._displayCrn || lessonObj.crn;
+            const initialDisplayCrn = displayCrn;
             schedule.lesson.crnList.forEach(crnValue => {
                 const option = document.createElement('option');
                 option.value = crnValue;
                 option.textContent = crnValue;
-                if (crnValue === initialDisplayCrn) {
-                    option.selected = true;
-                }
                 crnSelect.appendChild(option);
             });
+            crnSelect.value = initialDisplayCrn || '';
             
             crnSelect.addEventListener('change', (e) => {
                 const newCrn = e.target.value;
-                // Update display CRN on the lesson object and any grouped lessons
+                const currentPinnedCrn = getPinnedCrnForLesson();
+
+                if (!newCrn) {
+                    if (currentPinnedCrn) {
+                        window.togglePinLesson(currentPinnedCrn);
+                    }
+                    lessonObj._displayCrn = null;
+                    if (Array.isArray(lessonObj._groupedLessons)) {
+                        lessonObj._groupedLessons.forEach(l => { l._displayCrn = null; });
+                    }
+                    updateLessonDisplay(null, false);
+                    return;
+                }
+
+                if (currentPinnedCrn && currentPinnedCrn !== newCrn && window.pinnedLessons) {
+                    window.pinnedLessons.delete(currentPinnedCrn);
+                }
+
                 lessonObj._displayCrn = newCrn;
                 if (Array.isArray(lessonObj._groupedLessons)) {
                     lessonObj._groupedLessons.forEach(l => { l._displayCrn = newCrn; });
                 }
 
-                // Sync all selects for this lesson across the grid
-                const selector = `select.crn-selector[data-lesson-id="${lessonObj._displayId}"]`;
-                const otherSelects = document.querySelectorAll(selector);
-                otherSelects.forEach(s => {
-                    if (s === e.target) return;
-                    if (s.value !== newCrn) s.value = newCrn;
-                });
-
-                // Also update any plain CRN displays for the same lesson
-                const plainSelector = `.schedule-lesson[data-lesson-id="${lessonObj._displayId}"]`;
-                const lessonNodes = document.querySelectorAll(plainSelector);
-                lessonNodes.forEach(node => {
-                    const spans = node.querySelectorAll('.crn-text');
-                    spans.forEach(sp => { sp.textContent = newCrn; });
-                });
-
-                // Update pin icon state for all lesson elements for this lesson
-                const pinSelector = `.schedule-lesson[data-lesson-id="${lessonObj._displayId}"] .lesson-pin-icon`;
-                const pins = document.querySelectorAll(pinSelector);
-                pins.forEach(p => {
-                    p.setAttribute('data-crn', newCrn);
-                    if (window.pinnedLessons && window.pinnedLessons.has(newCrn)) {
-                        p.classList.add('pinned');
-                    } else {
-                        p.classList.remove('pinned');
-                    }
-                });
-
-                // Update the display (repaint if necessary)
-                if (typeof this._updateScheduleDisplay === 'function') this._updateScheduleDisplay();
+                if (!window.pinnedLessons || !window.pinnedLessons.has(newCrn)) {
+                    window.togglePinLesson(newCrn);
+                }
+                updateLessonDisplay(newCrn, true);
             });
             
             // Allow dropdown to overflow short lesson cards
@@ -281,11 +335,12 @@ class ScheduleDisplayer {
             // Set lessonDiv to allow visible overflow so the native select popup is visible
             lessonDiv.style.overflow = 'visible';
 
-            crn.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i>`;
+            crnLabel.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i><span class="crn-text">${crnTextValue}</span>`;
+            crn.appendChild(crnLabel);
             crn.appendChild(crnSelect);
         } else {
-            const displayCrnPlain = lessonObj._displayCrn || lessonObj.crn || 'N/A';
-            crn.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i><span class="crn-text">${displayCrnPlain}</span>`;
+            crnLabel.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i><span class="crn-text">${crnTextValue}</span>`;
+            crn.appendChild(crnLabel);
         }
         
         const instructor = document.createElement('div');
@@ -383,7 +438,7 @@ class ScheduleDisplayer {
         const tooltipText = [
             `${courseCodeTitle}: ${courseNameTitle}`,
             `${schedule.startTime} - ${schedule.endTime}`,
-            `CRN: ${lessonObj._displayCrn || lessonObj.crn || 'N/A'}`,
+            `CRN: ${crnTextValue}`,
             `Öğretim Görevlisi: ${instructorName}`,
             ...buildingInfo
         ].filter(Boolean).join('\n');
