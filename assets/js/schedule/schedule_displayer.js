@@ -176,6 +176,7 @@ class ScheduleDisplayer {
             }
             return lessonObj.crn || null;
         };
+        let updateLessonTooltip = null;
         const updateLessonDisplay = (newDisplayCrn, pinned) => {
             const hasMultipleCrns = Array.isArray(lessonObj.crnList) && lessonObj.crnList.length > 1;
             const textValue = newDisplayCrn || (hasMultipleCrns ? 'CRN not chosen' : (lessonObj.crn || 'N/A'));
@@ -197,6 +198,10 @@ class ScheduleDisplayer {
                     p.classList.remove('pinned');
                 }
             });
+
+            if (typeof updateLessonTooltip === 'function') {
+                updateLessonTooltip(textValue);
+            }
         };
 
         // Use display CRN for UI actions; don't mutate canonical lesson.crn here.
@@ -270,7 +275,7 @@ class ScheduleDisplayer {
         if (hasMultipleCrns) {
             // Create a select dropdown for multiple CRNs
             const crnSelect = document.createElement('select');
-            crnSelect.className = 'crn-selector';
+            crnSelect.className = 'crn-selector lesson-crn-select';
             crnSelect.setAttribute('data-lesson-id', lessonObj._displayId);
             // Make the select compact and positioned so it doesn't change layout
             crnSelect.style.width = 'auto';
@@ -430,15 +435,22 @@ class ScheduleDisplayer {
             }
         }
         
-        const tooltipText = [
+        const buildTooltipText = (crnText) => [
             `${courseCodeTitle}: ${courseNameTitle}`,
             `${schedule.startTime} - ${schedule.endTime}`,
-            `CRN: ${crnTextValue}`,
+            `CRN: ${crnText}`,
             `Öğretim Görevlisi: ${instructorName}`,
             ...buildingInfo
         ].filter(Boolean).join('\n');
         
-        lessonDiv.setAttribute('title', tooltipText);
+        updateLessonTooltip = (crnText) => {
+            const tooltipSelector = `.schedule-lesson[data-lesson-id="${lessonObj._displayId}"]`;
+            document.querySelectorAll(tooltipSelector).forEach(node => {
+                node.setAttribute('title', buildTooltipText(crnText));
+            });
+        };
+
+        updateLessonTooltip(crnTextValue);
         
         return lessonDiv;
     }

@@ -836,6 +836,18 @@ body, html {
     min-height: 18px;
 }
 
+.lesson-crn-select {
+    height: 18px;
+    line-height: 18px;
+    padding: 0 6px;
+    max-width: 96px;
+    font-size: 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.15) !important;
+    white-space: nowrap;
+}
+
 .schedule-cell {
     position: relative;
 }
