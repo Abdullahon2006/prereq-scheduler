@@ -331,6 +331,10 @@ class ScheduleStateManager {
             if (lesson && lesson.crn) {
                 this.pinnedLessons.delete(lesson.crn);
             }
+            if (lesson) {
+                delete lesson._displayCrn;
+                delete lesson._displayId;
+            }
         });
         window.pinnedLessons = this.pinnedLessons;
     }

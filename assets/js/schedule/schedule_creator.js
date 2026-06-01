@@ -61,7 +61,7 @@ class ScheduleCreator {
             );
             this.courseRowRenderer.onCourseChange = (rowId) => this._handleCourseChange(rowId);
             this.courseRowRenderer.onInstructorChange = (rowId) => this._handleInstructorChange(rowId);
-            this.courseRowRenderer.onRemoveCourse = (rowId) => this._handleRemoveCourse(rowId);
+            this.courseRowRenderer.onRemoveCourse = (rowId, courseData) => this._handleRemoveCourse(rowId, courseData);
         }
         
         // Initialize export popup

@@ -256,11 +256,8 @@ class ScheduleDisplayer {
         const crn = document.createElement('div');
         ScheduleStyle.applyInfoTextStyles(crn);
         // Keep CRN label and dropdown on the same row
-        crn.style.display = 'flex';
-        crn.style.alignItems = 'center';
-        crn.style.justifyContent = 'space-between';
-        crn.style.gap = '6px';
-        crn.style.minHeight = '18px';
+        crn.classList.add('lesson-crn-row');
+        crn.style.position = 'relative';
 
         const crnLabel = document.createElement('span');
         crnLabel.style.display = 'inline-flex';
@@ -283,6 +280,8 @@ class ScheduleDisplayer {
             crnSelect.style.color = 'inherit';
             crnSelect.style.fontSize = 'inherit';
             crnSelect.style.pointerEvents = 'auto';
+            crnSelect.style.position = 'relative';
+            crnSelect.style.zIndex = '10';
             crnSelect.style.appearance = 'menulist';
 
             const emptyOption = document.createElement('option');

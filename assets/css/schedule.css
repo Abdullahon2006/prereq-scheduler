@@ -819,6 +819,14 @@ body, html {
     border-left: 2px dashed #959595 !important;
 }
 
+.lesson-crn-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 6px;
+    min-height: 18px;
+}
+
 .schedule-cell {
     position: relative;
 }
