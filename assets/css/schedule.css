@@ -819,6 +819,15 @@ body, html {
     border-left: 2px dashed #959595 !important;
 }
 
+.schedule-lesson.crn-open {
+    overflow: visible;
+    z-index: 50;
+}
+
+.schedule-container.crn-open {
+    overflow: visible;
+}
+
 .lesson-crn-row {
     display: grid;
     grid-template-columns: 1fr auto;

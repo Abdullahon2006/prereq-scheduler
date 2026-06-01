@@ -329,11 +329,6 @@ class ScheduleDisplayer {
                 updateLessonDisplay(newCrn, true);
             });
             
-            // Allow dropdown to overflow short lesson cards
-            // (ScheduleStyle.applyLessonCardStyles sets overflow hidden by default)
-            // Set lessonDiv to allow visible overflow so the native select popup is visible
-            lessonDiv.style.overflow = 'visible';
-
             // For multi-CRN lessons, keep label to the icon only and let the select show the text
             crnLabel.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i>`;
             crn.appendChild(crnLabel);
