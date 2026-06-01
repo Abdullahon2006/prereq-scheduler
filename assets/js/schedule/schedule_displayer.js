@@ -334,7 +334,8 @@ class ScheduleDisplayer {
             // Set lessonDiv to allow visible overflow so the native select popup is visible
             lessonDiv.style.overflow = 'visible';
 
-            crnLabel.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i><span class="crn-text">${crnTextValue}</span>`;
+            // For multi-CRN lessons, keep label to the icon only and let the select show the text
+            crnLabel.innerHTML = `<i class="fa-solid fa-hashtag" style="display: inline-block; width: 20px; margin-right: 6px;"></i>`;
             crn.appendChild(crnLabel);
             crn.appendChild(crnSelect);
         } else {
